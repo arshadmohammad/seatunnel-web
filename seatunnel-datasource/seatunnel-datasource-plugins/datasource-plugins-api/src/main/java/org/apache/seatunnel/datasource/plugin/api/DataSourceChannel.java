@@ -34,6 +34,10 @@ import java.util.stream.Collectors;
 public interface DataSourceChannel {
 
     List<String> DEFAULT_DATABASES = ImmutableList.of("default");
+    // Used for datasource where databases are not supported
+    List<String> PLACEHOLDER_DATABASES = ImmutableList.of("placeholder_database");
+    // Used for datasource where tables are not supported
+    List<String> PLACEHOLDER_TABLES = ImmutableList.of("placeholder_table");
 
     /**
      * get datasource metadata fields by datasource name

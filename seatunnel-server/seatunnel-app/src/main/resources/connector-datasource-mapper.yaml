@@ -72,6 +72,10 @@ connector-datasource-mapper:
       dataSources:
         - Hive
 
+    HdfsFile:
+      dataSources:
+        - HdfsFile
+
   sourceDatasourceFeatures:
     JDBC-Mysql:
       businessMode:
@@ -172,6 +176,13 @@ connector-datasource-mapper:
       sceneMode:
         - SINGLE_TABLE
         - MULTIPLE_TABLE
+
+    HdfsFile:
+      businessMode:
+        - DATA_INTEGRATION
+      sceneMode:
+        - SINGLE_TABLE
+
   sinkDatasourceFeatures:
     JDBC-Mysql:
       businessMode:
@@ -271,6 +282,12 @@ connector-datasource-mapper:
         - MULTIPLE_TABLE
 
     Hive:
+      businessMode:
+        - DATA_INTEGRATION
+      sceneMode:
+        - SINGLE_TABLE
+
+    HdfsFile:
       businessMode:
         - DATA_INTEGRATION
       sceneMode:
