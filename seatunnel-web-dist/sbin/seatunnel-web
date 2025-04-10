@@ -1,0 +1,114 @@
+#!/bin/sh
+
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+set -
+# Usage: seatunnel-web {start|stop|status}
+CONFDIR=${CONFDIR:-"/etc/seatunnel-web/conf"}
+
+# Load environment variables if the configuration file exists
+if [ -f "${CONFDIR}/seatunnel-web-env.sh" ]; then
+    . "${CONFDIR}/seatunnel-web-env.sh"
+else
+    echo "Error: ${CONFDIR}/seatunnel-web-env.sh not found."
+    exit 1
+fi
+
+export SEATUNNEL_HOME="$STACK_ROOT/current/seatunnel"
+
+# Check if SEATUNNEL_HOME is set
+check() {
+  if [ -n "${SEATUNNEL_HOME}" ]; then
+    echo "Load connectors from ${SEATUNNEL_HOME}"
+  else
+    echo "SEATUNNEL_HOME is not set. Please check it."
+    exit 1
+  fi
+}
+
+# start
+start() {
+  echo "starting seatunnel-web..."
+
+  check
+
+  # Ensure log directory exists
+  [ ! -d "$LOGDIR" ] && mkdir -p "$LOGDIR"
+
+  # Set JVM and Spring options
+  SPRING_OPTS="-Dspring.config.name=application.yml -Dspring.config.location=classpath:application.yml"
+  JAVA_OPTS="${SEATUNNEL_WEB_JAVA_OPTS} -Dseatunnel-web.logs.path=${LOGDIR}"
+
+  # Verify JAVA_HOME is set
+  [ -z "$JAVA_HOME" ] && { echo "JAVA_HOME is not set"; exit 1; }
+
+  # Build classpath
+  CLASSPATH="$CONFDIR:$SEATUNNEL_WEB_HOME/libs/*:$SEATUNNEL_WEB_HOME/datasource/*"
+  [ -d "$SEATUNNEL_WEB_HOME/ranger-seatunnel-plugin" ] && {
+    CLASSPATH="$CLASSPATH:$SEATUNNEL_WEB_HOME/ranger-seatunnel-plugin/lib/*.jar"
+    CLASSPATH="$CLASSPATH:$SEATUNNEL_WEB_HOME/ranger-seatunnel-plugin/lib/ranger-seatunnel-plugin-impl/*"
+  }
+
+  # Start the application
+  cd "$SEATUNNEL_WEB_HOME" || exit
+  nohup "$JAVA_HOME/bin/java" $JAVA_OPTS -cp "$CLASSPATH" $SPRING_OPTS \
+    org.apache.seatunnel.app.SeatunnelApplication >> "${LOGDIR}/seatunnel.out" 2>&1 &
+  echo "seatunnel-web started"
+}
+
+# Get the PID of the Seatunnel application
+get_pid() {
+  jcmd | grep -i 'org.apache.seatunnel.app.SeatunnelApplication' | grep -v grep | awk '{print $1}'
+}
+
+# Stop the Seatunnel application
+stop() {
+  echo "Stopping seatunnel-web..."
+  pid=$(get_pid)
+  if [ -n "$pid" ]; then
+    kill -15 "$pid" && echo "seatunnel-web stopped" || echo "Failed to stop seatunnel-web"
+  else
+    echo "seatunnel-web is not running"
+  fi
+}
+
+# Check the status of the Seatunnel application
+status() {
+  pid=$(get_pid)
+  if [ -n "$pid" ]; then
+    echo "seatunnel-web is running (PID: $pid)"
+  else
+    echo "seatunnel-web is not running"
+  fi
+}
+
+# main
+case "$1" in
+"start")
+  start
+  ;;
+"stop")
+  stop
+  ;;
+"status")
+  status
+  ;;
+*)
+  echo "Usage: seatunnel-web {start|stop|status}"
+  exit 1
+esac
